@@ -6,6 +6,9 @@ exec 3>&1
 exec 1>&2
 jq -M -S . < /dev/stdin > /tmp/input.json
 
+echo "=== INPUT: "
+cat /tmp/input.json
+
 skip=$(jq -r .params.skip < /tmp/input.json)
 
 domain=$(jq -r .source.domain < /tmp/input.json)
@@ -79,6 +82,10 @@ for line in "${lines[@]:2}"; do
         files+=("$(echo "$line" | awk '{print $1}')")
     fi
 done
+echo === folders
+echo $folders
+echo === files
+echo $files
 
 cd "$1"
 if [ "${#files[@]}" -eq 0 ] && [ "${#files_to_get[@]}" -eq 0 ] || [ "$skip" == "true" ]; then
@@ -101,20 +108,25 @@ else
         done
         if [ "$same" = 1 ]; then
             if [ "${dir[0]}" = '.' ]; then
+                echo "mget ${base[*]}" / "$url"
                 echo "mget ${base[*]}" | cadaver "$url" | head -n -2
             else
+                echo "mget ${base[*]}" / "$url${dir[0]}/"
                 echo "mget ${base[*]}" | cadaver "$url${dir[0]}/" | head -n -2
             fi
         else
             for idx in "${!dir[@]}"; do
                 if [ "${dir[$idx]}" = '.' ]; then
+                    echo "get ${base[$idx]}" / cadaver "$url"
                     echo "get ${base[$idx]}" | cadaver "$url" | head -n -2
                 else
+                    echo "get ${base[$idx]}" / cadaver "$url${dir[$idx]}/"
                     echo "get ${base[$idx]}" | cadaver "$url${dir[$idx]}/" | head -n -2
                 fi
             done
         fi
     else
+        echo "mget ${files[*]}" / cadaver "$url"
         echo "mget ${files[*]}" | cadaver "$url" | head -n -2
     fi
     size=$(du -shc . | awk '{print $1}' | tail -n 1)
@@ -122,5 +134,7 @@ fi
 
 IFS=$'\n'
 json='{"version":{"sha256":"'"$sha256"'","url":"'"$url"'"},"metadata":[{"name":"folder","value":"'"${folders[*]}"'"},{"name":"file","value":"'"${files[*]}"'"},{"name":"size","value":"'"$size"'"}]}'
+
+echo "=== OUT: " $json
 
 jq -n "$json" >&3
